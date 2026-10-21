@@ -2,6 +2,7 @@
 *.elf
 *.bin
 *.o
-overlays.json
+arm9_dbg.json
+*.tmp
 __pycache__/
 *.log

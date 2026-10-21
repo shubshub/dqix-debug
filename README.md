@@ -6,7 +6,9 @@ locals.
 
 How it works: [ZevyaDev's melonDS fork](https://github.com/ZevyaDev/melonDS) runs the game with its GDB stub on.
 VS Code's C/C++ debugger drives `gdb-multiarch`, which attaches to the stub. `make_dbg_elf.py` relinks the decomp with
-debug info and writes `arm9_dbg.elf`, which tells gdb which source line each address came from.
+debug info and writes `arm9_dbg.elf`, which tells gdb which source line each address came from. Overlays share
+addresses, so `gdb_overlays.py` follows the game's overlay table and keeps gdb on the source of the overlays that are
+actually loaded.
 
 ## Getting started
 
@@ -58,7 +60,8 @@ This runs `ninja build/usa/arm9.o` in the decomp, relinks with `-sym on` into `b
 `arm9_dbg.elf` here. It takes about 3 minutes. Rerun it after changing decomp sources; add `--no-build` if the decomp
 is already built. The game code it links is the same as the normal build's.
 
-`arm9_dbg.elf`, `overlays.json` and `*.bin` hold the game's compiled code. They are gitignored: never commit them.
+`arm9_dbg.elf`, `arm9_live.elf`, `arm9_dbg.json` and `*.bin` are built from the game. They are gitignored: never
+commit them.
 
 ### 4. Set up VS Code (once)
 
@@ -80,17 +83,22 @@ If `gdb-multiarch` is not on VS Code's PATH, set `miDebuggerPath` to its full pa
    commands with `-exec`, e.g. `-exec info line *$pc`).
 4. **Stop** detaches and leaves the game running, so you can attach again without restarting melonDS.
 
+**Overlays** (battle, field, menus, ...) work the same way. A breakpoint in an overlay's `.cpp` stays pending (hollow in
+VS Code) until the game loads that overlay. It goes live as the overlay loads, before any of its code runs, and returns
+to pending if another overlay replaces it. While gdb is attached, each overlay load pauses the game for about half a
+second while gdb reloads its symbols. `-exec dqix-overlays` in the Debug Console shows which overlays are loaded.
+
 To break somewhere on every attach, add lines to `postRemoteConnectCommands` in launch.json, for example
-`{ "text": "break *0x02188bf8" }`.
+`{ "text": "break GetEntryPair02188bf8.cpp:13" }`. Prefer file:line or function breakpoints in overlays: an address
+breakpoint (`break *0x02188bf8`) fires for whichever overlay holds that address.
 
 To check the setup from a terminal: `gdb-multiarch -batch -x smoke.gdb arm9_dbg.elf`. It attaches, breaks in a
-per-frame function, prints source, locals and arguments, and detaches.
+per-frame function, prints source, locals, arguments and the loaded overlays, and detaches.
 
 ## Limits and troubleshooting
 
-- **Overlays.** Main, ITCM and DTCM map to source. Overlays (battle, field, menus) share address ranges, and gdb shows
-  whichever overlay's source it finds first: 0x02188bf8 shows ov008 even while ov009 is loaded. In overlay code, trust
-  the disassembly over the source view.
+- **No source shown in some code.** Only decompiled C/C++ has source. Functions still in assembly show their name and
+  disassembly, and the call stack may stop at them. Overlays 7, 18, 22, 29 and 32 have no C/C++ yet.
 - **One client at a time.** The stub serves one gdb.
 - **"vMustReplyEmpty: timeout" on attach.** melonDS keeps no-ack mode after a client leaves. `vscode.gdb` and
   `smoke.gdb` run `set remote noack-packet off` to fix it. If you write your own gdb script, do the same.
@@ -109,12 +117,23 @@ per-frame function, prints source, locals and arguments, and detaches.
 - 26 member-pointer types reference DIE 0, and gdb aborts on them. It points them at a base type.
 - mwldarm's ELF has no code sections, so gdb crashes setting any breakpoint. It writes a plain ELF with one section per
   region instead.
+- Overlays share addresses, and gdb maps an address to the first compile unit that covers it. So every overlay is
+  written switched off: its section is unallocated, and its compile units have no address range and an empty line
+  table. `arm9_dbg.json` records the real values for each overlay.
+
+How `gdb_overlays.py` keeps up:
+- It reads the game's overlay slot table: row `data_01ffd348` of `data_01ffd364[8][6]`.
+- It switches on the overlays listed there in a copy, `arm9_live.elf`, and reloads that (about 0.5s).
+- It does this when gdb first stops after attaching.
+- It also does it on each `DecompressAndStaticInitializeOverlay` call, through an internal breakpoint that never
+  stops the game.
 
 ## Files
 
 | File | What it is |
 |------|------------|
-| `make_dbg_elf.py` | Builds `arm9_dbg.elf` from the decomp |
+| `make_dbg_elf.py` | Builds `arm9_dbg.elf` and `arm9_dbg.json` from the decomp |
+| `gdb_overlays.py` | Keeps gdb's symbols on the loaded overlays, sourced by launch.json |
 | `vscode.gdb` | gdb settings for the melonDS stub, sourced by launch.json |
 | `vscode/launch.json` | VS Code template, copied to `dqix-decomp/.vscode/` |
 | `smoke.gdb` | Command-line check of the whole setup |

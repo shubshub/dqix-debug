@@ -2,6 +2,7 @@ set pagination off
 set confirm off
 set architecture armv5te
 set remote noack-packet off
+source gdb_overlays.py
 target remote localhost:3333
 echo \n=== stopped on connect ===\n
 info line *$pc
@@ -10,6 +11,7 @@ echo \n=== breakpoint on a per-frame function, then continue ===\n
 tbreak func_020c9bf0
 continue
 bt 6
+dqix-overlays
 echo \n=== up into the caller: source + locals ===\n
 up
 list

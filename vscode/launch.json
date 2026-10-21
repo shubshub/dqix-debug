@@ -20,7 +20,8 @@
                 { "text": "set architecture armv5te" },
                 { "text": "set print pretty on" },
                 { "text": "set pagination off" },
-                { "text": "source ${workspaceFolder}/../dqix-debug/vscode.gdb" }
+                { "text": "source ${workspaceFolder}/../dqix-debug/vscode.gdb" },
+                { "text": "source ${workspaceFolder}/../dqix-debug/gdb_overlays.py" }
             ],
             "postRemoteConnectCommands": [
                 // Optional: breakpoints to set on every attach, e.g. { "text": "break *0x02188bf8" }
