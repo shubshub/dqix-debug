@@ -13,8 +13,8 @@ usage: python make_dbg_elf.py [--no-build]
 import json, os, re, subprocess, sys
 from elftools.elf.elffile import ELFFile
 
-REPO = os.environ.get("DQIX_REPO", "/home/chris/NetBeansProjects/dqdecomp/dqix-decomp")
 HERE = os.path.dirname(os.path.abspath(__file__))
+REPO = os.environ.get("DQIX_REPO", os.path.join(os.path.dirname(HERE), "dqix-decomp"))  # default: cloned beside us
 OUT = os.path.join(HERE, "arm9_dbg.elf")
 RAW = "build/usa/dbg/arm9_dbg.o"
 
