@@ -1,0 +1,30 @@
+{
+    // Copy to dqix-decomp/.vscode/launch.json (gitignored there). Assumes dqix-debug is cloned beside dqix-decomp.
+    // 1. python ../dqix-debug/make_dbg_elf.py   (rebuilds arm9_dbg.elf after source changes)
+    // 2. melonds-debug extract/baserom_dqix_usa.nds   (GDB stub on, JIT off in melonDS.toml)
+    // 3. F5. Stop detaches (vscode.gdb), so you can reattach without restarting melonDS.
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "DQIX: attach to melonDS (ARM9)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/../dqix-debug/arm9_dbg.elf",
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "gdb-multiarch",
+            "miDebuggerServerAddress": "localhost:3333",
+            "stopAtConnect": true,
+            "externalConsole": false,
+            "setupCommands": [
+                { "text": "set architecture armv5te" },
+                { "text": "set print pretty on" },
+                { "text": "set pagination off" },
+                { "text": "source ${workspaceFolder}/../dqix-debug/vscode.gdb" }
+            ],
+            "postRemoteConnectCommands": [
+                // Optional: breakpoints to set on every attach, e.g. { "text": "break *0x02188bf8" }
+            ]
+        }
+    ]
+}

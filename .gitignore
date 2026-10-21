@@ -1,0 +1,7 @@
+# Generated from the ROM build: holds the game's compiled code, never commit it
+*.elf
+*.bin
+*.o
+overlays.json
+__pycache__/
+*.log
